@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎄 Weihnachtsrätsel - Connections</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .snowflakes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            color: white;
+            font-size: 1.5em;
+            opacity: 0.8;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .instructions h4 {
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        .difficulty-legend {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8em;
+        }
+
+        .legend-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.yellow { background: #f9df6d; }
+        .legend-dot.green { background: #a0c35a; }
+        .legend-dot.blue { background: #b0c4ef; }
+        .legend-dot.purple { background: #ba81c5; }
+
+        .solved-groups {
+            margin-bottom: 15px;
+        }
+
+        .solved-group {
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            text-align: center;
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .solved-group.yellow { background: #f9df6d; color: #333; }
+        .solved-group.green { background: #a0c35a; color: #333; }
+        .solved-group.blue { background: #b0c4ef; color: #333; }
+        .solved-group.purple { background: #ba81c5; color: #333; }
+
+        .solved-group h4 {
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .solved-group p {
+            font-size: 0.95em;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .word-tile {
+            background: rgba(255,255,255,0.9);
+            border-radius: 8px;
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.95em;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .word-tile:hover {
+            background: white;
+            transform: scale(1.02);
+        }
+
+        .word-tile.selected {
+            background: #5a5a5a;
+            color: white;
+        }
+
+        .word-tile.shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-shuffle {
+            background: #9e9e9e;
+            color: white;
+        }
+
+        .btn-deselect {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-submit {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .mistakes {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .mistake-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .mistake-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f44336;
+            transition: opacity 0.3s;
+        }
+
+        .mistake-dot.used {
+            opacity: 0.2;
+        }
+
+        .message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            min-height: 50px;
+        }
+
+        .message.success {
+            background: #4CAF50;
+        }
+
+        .message.error {
+            background: #f44336;
+        }
+
+        .message.warning {
+            background: #ff9800;
+        }
+
+        .message.info {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .next-button {
+            display: none;
+            margin: 20px auto;
+            padding: 15px 40px;
+            font-size: 1.3em;
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            color: #333;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+        }
+
+        .next-button.visible {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,215,0,0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(255,215,0,0); }
+        }
+
+        .selection-count {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="snowflakes" id="snowflakes"></div>
+
+    <div class="container">
+        <h1>🎄 Weihnachtsrätsel 🎄</h1>
+        <p class="subtitle">Spiel 3 von 3: Connections</p>
+
+        <div class="instructions">
+            <h4>📖 Anleitung</h4>
+            <ul>
+                <li>Finde 4 Gruppen von je 4 zusammengehörenden Wörtern</li>
+                <li>Wähle 4 Wörter aus und drücke "Prüfen"</li>
+                <li>Du hast 4 Fehlversuche</li>
+            </ul>
+            <div class="difficulty-legend">
+                <div class="legend-item"><div class="legend-dot yellow"></div> Einfach</div>
+                <div class="legend-item"><div class="legend-dot green"></div> Mittel</div>
+                <div class="legend-item"><div class="legend-dot blue"></div> Schwer</div>
+                <div class="legend-item"><div class="legend-dot purple"></div> Knifflig</div>
+            </div>
+        </div>
+
+        <div class="solved-groups" id="solved-groups"></div>
+
+        <div class="game-board" id="game-board"></div>
+
+        <div class="selection-count">
+            Ausgewählt: <span id="selected-count">0</span> / 4
+        </div>
+
+        <div class="mistakes">
+            Verbleibende Versuche:
+            <div class="mistake-dots" id="mistake-dots">
+                <div class="mistake-dot"></div>
+                <div class="mistake-dot"></div>
+                <div class="mistake-dot"></div>
+                <div class="mistake-dot"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-shuffle" onclick="shuffleBoard()">🔀 Mischen</button>
+            <button class="btn-deselect" onclick="deselectAll()">✖ Abwählen</button>
+            <button class="btn-submit" id="submit-btn" onclick="submitGuess()" disabled>✓ Prüfen</button>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <button class="next-button" id="next-button" onclick="goToNext()">
+            🎁 Geschenk enthüllen! →
+        </button>
+    </div>
+
+    <script>
+        // ============================================================
+        // 🎮 KONFIGURATIONSBEREICH - HIER KANNST DU ALLES ANPASSEN! 🎮
+        // ============================================================
+
+        const CONFIG = {
+            // Die 4 Gruppen mit je 4 Wörtern
+            // difficulty: "yellow" (einfach), "green" (mittel), "blue" (schwer), "purple" (knifflig)
+            groups: [
+                {
+                    name: "MarioKart Charaktere",
+                    words: ["MARIO", "LUIGI", "PEACH", "TOAD"],
+                    difficulty: "yellow"
+                },
+                {
+                    name: "Items auf der Strecke",
+                    words: ["BANANE", "PANZER", "STERN", "PILZ"],
+                    difficulty: "green"
+                },
+                {
+                    name: "MarioKart Strecken",
+                    words: ["REGENBOGEN", "VULKAN", "STRAND", "SCHLOSS"],
+                    difficulty: "blue"
+                },
+                {
+                    name: "Fahrzeugteile",
+                    words: ["REIFEN", "MOTOR", "GLEITER", "RAHMEN"],
+                    difficulty: "purple"
+                }
+            ],
+
+            // Maximale Fehlversuche
+            maxMistakes: 4,
+
+            // Nächste Seite (Finale!)
+            nextPage: "04-finale.html"
+        };
+
+        // ============================================================
+        // 🎮 SPIELLOGIK - AB HIER NICHTS ÄNDERN! 🎮
+        // ============================================================
+
+        let selectedWords = [];
+        let solvedGroups = [];
+        let remainingWords = [];
+        let mistakes = 0;
+        let gameOver = false;
+        let previousGuesses = [];
+
+        function initGame() {
+            // Collect all words
+            remainingWords = CONFIG.groups.flatMap(g => 
+                g.words.map(word => ({ word, group: g.name, difficulty: g.difficulty }))
+            );
+
+            // Shuffle
+            shuffleArray(remainingWords);
+
+            renderBoard();
+            createSnowflakes();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+
+            remainingWords.forEach(item => {
+                const tile = document.createElement('div');
+                tile.className = 'word-tile';
+                tile.textContent = item.word;
+                tile.dataset.word = item.word;
+                tile.addEventListener('click', () => toggleWord(item.word, tile));
+                board.appendChild(tile);
+            });
+
+            updateSelectionCount();
+        }
+
+        function toggleWord(word, tile) {
+            if (gameOver) return;
+
+            if (selectedWords.includes(word)) {
+                selectedWords = selectedWords.filter(w => w !== word);
+                tile.classList.remove('selected');
+            } else if (selectedWords.length < 4) {
+                selectedWords.push(word);
+                tile.classList.add('selected');
+            }
+
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            document.getElementById('selected-count').textContent = selectedWords.length;
+            document.getElementById('submit-btn').disabled = selectedWords.length !== 4;
+        }
+
+        function deselectAll() {
+            selectedWords = [];
+            document.querySelectorAll('.word-tile.selected').forEach(tile => {
+                tile.classList.remove('selected');
+            });
+            updateSelectionCount();
+        }
+
+        function shuffleBoard() {
+            shuffleArray(remainingWords);
+            const currentSelected = [...selectedWords];
+            renderBoard();
+            
+            // Re-select previously selected words
+            currentSelected.forEach(word => {
+                const tile = document.querySelector(`[data-word="${word}"]`);
+                if (tile) {
+                    tile.classList.add('selected');
+                }
+            });
+        }
+
+        function submitGuess() {
+            if (selectedWords.length !== 4 || gameOver) return;
+
+            // Check if already guessed
+            const guessKey = [...selectedWords].sort().join(',');
+            if (previousGuesses.includes(guessKey)) {
+                showMessage('Diese Kombination hast du schon probiert!', 'warning');
+                return;
+            }
+            previousGuesses.push(guessKey);
+
+            // Check if correct
+            const group = CONFIG.groups.find(g => {
+                const groupWords = g.words.map(w => w.toUpperCase());
+                const selected = selectedWords.map(w => w.toUpperCase());
+                return groupWords.every(w => selected.includes(w)) && 
+                       selected.every(w => groupWords.includes(w));
+            });
+
+            if (group) {
+                // Correct!
+                solveGroup(group);
+            } else {
+                // Check how close
+                let maxMatch = 0;
+                CONFIG.groups.forEach(g => {
+                    if (solvedGroups.includes(g.name)) return;
+                    const matches = selectedWords.filter(w => 
+                        g.words.map(x => x.toUpperCase()).includes(w.toUpperCase())
+                    ).length;
+                    maxMatch = Math.max(maxMatch, matches);
+                });
+
+                if (maxMatch === 3) {
+                    showMessage('So nah! Ein Wort ist falsch.', 'warning');
+                } else {
+                    showMessage('Leider falsch...', 'error');
+                }
+
+                // Shake selected tiles
+                document.querySelectorAll('.word-tile.selected').forEach(tile => {
+                    tile.classList.add('shake');
+                    setTimeout(() => tile.classList.remove('shake'), 500);
+                });
+
+                mistakes++;
+                updateMistakeDots();
+
+                if (mistakes >= CONFIG.maxMistakes) {
+                    gameOver = true;
+                    revealAll();
+                }
+            }
+
+            deselectAll();
+        }
+
+        function solveGroup(group) {
+            // Remove words from remaining
+            remainingWords = remainingWords.filter(item => 
+                !group.words.map(w => w.toUpperCase()).includes(item.word.toUpperCase())
+            );
+
+            solvedGroups.push(group.name);
+
+            // Add to solved display
+            const solvedEl = document.getElementById('solved-groups');
+            const groupEl = document.createElement('div');
+            groupEl.className = `solved-group ${group.difficulty}`;
+            groupEl.innerHTML = `
+                <h4>${group.name}</h4>
+                <p>${group.words.join(', ')}</p>
+            `;
+            solvedEl.appendChild(groupEl);
+
+            renderBoard();
+            showMessage(`🎉 "${group.name}" gefunden!`, 'success');
+
+            if (solvedGroups.length === CONFIG.groups.length) {
+                setTimeout(showVictory, 1000);
+            }
+        }
+
+        function updateMistakeDots() {
+            const dots = document.querySelectorAll('.mistake-dot');
+            for (let i = 0; i < mistakes; i++) {
+                dots[i].classList.add('used');
+            }
+        }
+
+        function revealAll() {
+            showMessage('Leider verloren! Die Lösung wird angezeigt...', 'error');
+
+            setTimeout(() => {
+                CONFIG.groups.forEach(group => {
+                    if (!solvedGroups.includes(group.name)) {
+                        solveGroup(group);
+                    }
+                });
+            }, 1500);
+        }
+
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+            
+            if (type !== 'success' || !text.includes('gefunden')) {
+                setTimeout(() => {
+                    if (msgEl.textContent === text) {
+                        msgEl.className = 'message';
+                        msgEl.textContent = '';
+                    }
+                }, 3000);
+            }
+        }
+
+        function showVictory() {
+            gameOver = true;
+            showMessage('🎄 PERFEKT! Alle Gruppen gefunden! 🎄', 'success');
+            document.getElementById('next-button').classList.add('visible');
+        }
+
+        function goToNext() {
+            window.location.href = CONFIG.nextPage;
+        }
+
+        function createSnowflakes() {
+            const container = document.getElementById('snowflakes');
+            for (let i = 0; i < 50; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                snowflake.textContent = '❄';
+                snowflake.style.left = Math.random() * 100 + '%';
+                snowflake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                snowflake.style.animationDelay = Math.random() * 5 + 's';
+                snowflake.style.fontSize = (Math.random() * 1 + 0.5) + 'em';
+                container.appendChild(snowflake);
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
