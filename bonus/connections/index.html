@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weihnachts-Connections - Bonus Spiel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+        .snowflakes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 0; }
+        .snowflake { position: absolute; top: -10px; color: white; font-size: 1.5em; opacity: 0.8; animation: fall linear infinite; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+        .container { position: relative; z-index: 1; max-width: 600px; width: 100%; }
+        h1 { text-align: center; margin-bottom: 10px; font-size: 2em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .subtitle { text-align: center; margin-bottom: 20px; font-size: 1.1em; opacity: 0.9; }
+        .instructions { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-bottom: 20px; font-size: 0.9em; }
+        .instructions h4 { margin-bottom: 10px; color: #ffd700; }
+        .instructions ul { margin-left: 20px; }
+        .instructions li { margin-bottom: 5px; }
+        .stats { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; }
+        .stats h4 { color: #ffd700; margin-bottom: 10px; }
+        .stats-grid { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.8em; font-weight: bold; }
+        .stat-label { font-size: 0.8em; opacity: 0.8; }
+        .theme-hint { background: rgba(255,215,0,0.2); border: 2px solid #ffd700; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; }
+        .theme-hint h3 { color: #ffd700; margin-bottom: 5px; font-size: 1.3em; }
+        .theme-hint p { font-size: 1.1em; }
+        .mistakes { text-align: center; margin-bottom: 15px; font-size: 1.1em; }
+        .mistakes-dots { display: flex; justify-content: center; gap: 8px; margin-top: 5px; }
+        .mistake-dot { width: 20px; height: 20px; border-radius: 50%; background: #ffd700; transition: all 0.3s; }
+        .mistake-dot.used { background: #3a3a3c; }
+        .solved-groups { margin-bottom: 15px; }
+        .solved-group { padding: 15px; border-radius: 10px; margin-bottom: 10px; text-align: center; animation: solveReveal 0.5s ease-out; }
+        .solved-group h4 { margin-bottom: 8px; font-size: 1em; text-transform: uppercase; }
+        .solved-group p { font-size: 0.95em; }
+        @keyframes solveReveal { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        .group-yellow { background: #f9df6d; color: #333; }
+        .group-green { background: #a0c35a; color: #333; }
+        .group-blue { background: #b0c4ef; color: #333; }
+        .group-purple { background: #ba81c5; color: #333; }
+        .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+        .tile {
+            aspect-ratio: 2/1;
+            min-height: 55px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            padding: 5px;
+            text-align: center;
+            word-break: break-word;
+        }
+        .tile:hover { background: white; transform: scale(1.02); }
+        .tile.selected { background: #5a5a5a; color: white; transform: scale(0.98); }
+        .tile.shake { animation: shake 0.5s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+        .btn {
+            padding: 12px 25px;
+            font-size: 1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-shuffle { background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.5); }
+        .btn-shuffle:hover:not(:disabled) { background: rgba(255,255,255,0.3); }
+        .btn-deselect { background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.5); }
+        .btn-deselect:hover:not(:disabled) { background: rgba(255,255,255,0.3); }
+        .btn-submit { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #333; }
+        .btn-submit:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 0 15px rgba(255,215,0,0.5); }
+        .message { text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; min-height: 50px; }
+        .message.success { background: #4CAF50; }
+        .message.error { background: #f44336; }
+        .message.info { background: rgba(255,255,255,0.2); }
+        .play-again-button { display: none; margin: 20px auto; padding: 15px 40px; font-size: 1.3em; background: linear-gradient(135deg, #ffd700, #ffaa00); color: #333; border: none; border-radius: 30px; cursor: pointer; animation: pulse 2s infinite; }
+        .play-again-button.visible { display: block; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,215,0,0.7); } 50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(255,215,0,0); } }
+        .selection-count { text-align: center; margin-bottom: 10px; font-size: 0.9em; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="snowflakes" id="snowflakes"></div>
+    <div class="container">
+        <h1>Weihnachts-Connections</h1>
+        <p class="subtitle">Bonus Spiel - Spiele so oft du willst!</p>
+
+        <div class="stats" id="stats">
+            <h4>Deine Statistik</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-played">0</div>
+                    <div class="stat-label">Gespielt</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-won">0</div>
+                    <div class="stat-label">Gewonnen</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-streak">0</div>
+                    <div class="stat-label">Serie</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h4>Anleitung</h4>
+            <ul>
+                <li>Finde 4 Gruppen von je 4 zusammengehorigen Begriffen</li>
+                <li>Wahle 4 Begriffe aus und klicke "Pruefen"</li>
+                <li>Du hast 4 Versuche - nutze sie weise!</li>
+            </ul>
+        </div>
+
+        <div class="theme-hint">
+            <h3>Thema</h3>
+            <p id="theme-text">Wird geladen...</p>
+        </div>
+
+        <div class="mistakes">
+            Verbleibende Versuche:
+            <div class="mistakes-dots" id="mistakes-dots">
+                <div class="mistake-dot"></div>
+                <div class="mistake-dot"></div>
+                <div class="mistake-dot"></div>
+                <div class="mistake-dot"></div>
+            </div>
+        </div>
+
+        <div class="solved-groups" id="solved-groups"></div>
+        <div class="board" id="board"></div>
+        <div class="selection-count" id="selection-count">0 / 4 ausgewahlt</div>
+        <div class="message" id="message"></div>
+
+        <div class="controls">
+            <button class="btn btn-shuffle" onclick="shuffleBoard()">Mischen</button>
+            <button class="btn btn-deselect" onclick="deselectAll()">Abwahlen</button>
+            <button class="btn btn-submit" id="submit-btn" onclick="submitGuess()" disabled>Pruefen</button>
+        </div>
+
+        <button class="play-again-button" id="play-again-button" onclick="startNewGame()">Nochmal spielen!</button>
+    </div>
+
+    <script>
+        // ============================================================
+        // SPIELE-DATENBANK - 20 verschiedene Spiele
+        // ============================================================
+
+        const GAMES = [
+            {
+                theme: "Weihnachten",
+                groups: [
+                    { name: "Weihnachtslieder", color: "yellow", words: ["STILLE NACHT", "O TANNENBAUM", "JINGLE BELLS", "LAST CHRISTMAS"] },
+                    { name: "Weihnachtsdeko", color: "green", words: ["KUGEL", "LAMETTA", "STERN", "KERZE"] },
+                    { name: "Weihnachtsessen", color: "blue", words: ["GANS", "KARPFEN", "KARTOFFELSALAT", "ROTKOHL"] },
+                    { name: "Nikolaus bringt", color: "purple", words: ["NUESSE", "APFEL", "MANDARINE", "SCHOKOLADE"] }
+                ]
+            },
+            {
+                theme: "Suessigkeiten",
+                groups: [
+                    { name: "Schokoladenmarken", color: "yellow", words: ["MILKA", "LINDT", "RITTER SPORT", "KINDER"] },
+                    { name: "Gummibaerchen-Farben", color: "green", words: ["ROT", "GELB", "GRUEN", "WEISS"] },
+                    { name: "Keksarten", color: "blue", words: ["SPEKULATIUS", "LEBKUCHEN", "ZIMTSTERN", "VANILLEKIPFERL"] },
+                    { name: "Bonbon-Geschmack", color: "purple", words: ["KIRSCHE", "ZITRONE", "ERDBEERE", "ORANGE"] }
+                ]
+            },
+            {
+                theme: "Musik",
+                groups: [
+                    { name: "Deutsche Bands", color: "yellow", words: ["RAMMSTEIN", "SCORPIONS", "TOKIO HOTEL", "KRAFTWERK"] },
+                    { name: "Instrumente mit Tasten", color: "green", words: ["KLAVIER", "ORGEL", "AKKORDEON", "KEYBOARD"] },
+                    { name: "Musikgenres", color: "blue", words: ["ROCK", "POP", "JAZZ", "KLASSIK"] },
+                    { name: "Notenwerte", color: "purple", words: ["GANZE", "HALBE", "VIERTEL", "ACHTEL"] }
+                ]
+            },
+            {
+                theme: "Fussball",
+                groups: [
+                    { name: "Bundesliga-Vereine", color: "yellow", words: ["BAYERN", "DORTMUND", "LEIPZIG", "LEVERKUSEN"] },
+                    { name: "Spielpositionen", color: "green", words: ["TORWART", "VERTEIDIGER", "MITTELFELD", "STUERMER"] },
+                    { name: "WM-Gastgeberlaender", color: "blue", words: ["BRASILIEN", "FRANKREICH", "KATAR", "RUSSLAND"] },
+                    { name: "Fussball-Begriffe", color: "purple", words: ["ABSEITS", "ELFMETER", "ECKE", "FREISTOSS"] }
+                ]
+            },
+            {
+                theme: "Tiere",
+                groups: [
+                    { name: "Haustiere", color: "yellow", words: ["HUND", "KATZE", "HAMSTER", "KANINCHEN"] },
+                    { name: "Voegel", color: "green", words: ["ADLER", "SPATZ", "AMSEL", "TAUBE"] },
+                    { name: "Meerestiere", color: "blue", words: ["WAL", "DELFIN", "HAI", "KRAKE"] },
+                    { name: "Tiere mit Streifen", color: "purple", words: ["ZEBRA", "TIGER", "BIENE", "DACHS"] }
+                ]
+            },
+            {
+                theme: "Essen und Trinken",
+                groups: [
+                    { name: "Getraenke mit Koffein", color: "yellow", words: ["KAFFEE", "COLA", "ENERGY DRINK", "SCHWARZTEE"] },
+                    { name: "Italienische Gerichte", color: "green", words: ["PIZZA", "PASTA", "RISOTTO", "LASAGNE"] },
+                    { name: "Fruehstueck", color: "blue", words: ["BROETCHEN", "MUESLI", "EIER", "MARMELADE"] },
+                    { name: "Gewuerze", color: "purple", words: ["SALZ", "PFEFFER", "ZIMT", "OREGANO"] }
+                ]
+            },
+            {
+                theme: "Geografie",
+                groups: [
+                    { name: "Hauptstaedte", color: "yellow", words: ["BERLIN", "PARIS", "LONDON", "ROM"] },
+                    { name: "Fluesse in Deutschland", color: "green", words: ["RHEIN", "ELBE", "DONAU", "MAIN"] },
+                    { name: "Gebirge", color: "blue", words: ["ALPEN", "HIMALAYA", "ANDEN", "ROCKY MOUNTAINS"] },
+                    { name: "Inseln", color: "purple", words: ["MALLORCA", "ISLAND", "KRETA", "SIZILIEN"] }
+                ]
+            },
+            {
+                theme: "Maerchen",
+                groups: [
+                    { name: "Grimms Maerchen", color: "yellow", words: ["ROTKAPPCHEN", "ASCHENPUTTEL", "SCHNEEWITTCHEN", "RAPUNZEL"] },
+                    { name: "Maerchenfiguren", color: "green", words: ["HEXE", "PRINZ", "DRACHE", "FEE"] },
+                    { name: "Magische Zahlen", color: "blue", words: ["DREI", "SIEBEN", "ZWOELF", "HUNDERT"] },
+                    { name: "Maerchenorte", color: "purple", words: ["SCHLOSS", "WALD", "TURM", "BRUNNEN"] }
+                ]
+            },
+            {
+                theme: "Schule",
+                groups: [
+                    { name: "Schulfaecher", color: "yellow", words: ["MATHE", "DEUTSCH", "ENGLISCH", "SPORT"] },
+                    { name: "Schulmaterial", color: "green", words: ["HEFT", "STIFT", "LINEAL", "RADIERGUMMI"] },
+                    { name: "Schulnoten", color: "blue", words: ["EINS", "ZWEI", "DREI", "VIER"] },
+                    { name: "In der Pause", color: "purple", words: ["FANGEN", "VERSTECKEN", "KLATSCH", "ESSEN"] }
+                ]
+            },
+            {
+                theme: "Farben und Kunst",
+                groups: [
+                    { name: "Primaerfarben", color: "yellow", words: ["ROT", "BLAU", "GELB", "MAGENTA"] },
+                    { name: "Beruehmte Maler", color: "green", words: ["PICASSO", "MONET", "VAN GOGH", "REMBRANDT"] },
+                    { name: "Kunstrichtungen", color: "blue", words: ["BAROCK", "RENAISSANCE", "MODERNE", "IMPRESSIONISMUS"] },
+                    { name: "Maltechniken", color: "purple", words: ["AQUARELL", "OEL", "ACRYL", "PASTELL"] }
+                ]
+            },
+            {
+                theme: "Filme",
+                groups: [
+                    { name: "Disney-Filme", color: "yellow", words: ["KOENIG DER LOEWEN", "FROZEN", "FINDET NEMO", "ALADDIN"] },
+                    { name: "Superhelden", color: "green", words: ["BATMAN", "SPIDERMAN", "IRON MAN", "SUPERMAN"] },
+                    { name: "Film-Genres", color: "blue", words: ["KOMOEDIE", "THRILLER", "HORROR", "ROMANZE"] },
+                    { name: "Star Wars Figuren", color: "purple", words: ["LUKE", "LEIA", "YODA", "VADER"] }
+                ]
+            },
+            {
+                theme: "Sport",
+                groups: [
+                    { name: "Ballsportarten", color: "yellow", words: ["TENNIS", "BASKETBALL", "VOLLEYBALL", "HANDBALL"] },
+                    { name: "Wintersport", color: "green", words: ["SKIFAHREN", "EISHOCKEY", "RODELN", "SNOWBOARD"] },
+                    { name: "Olympische Disziplinen", color: "blue", words: ["SPRINT", "SCHWIMMEN", "TURNEN", "FECHTEN"] },
+                    { name: "Sport-Ausruestung", color: "purple", words: ["SCHLAEGER", "HELM", "NETZ", "TOR"] }
+                ]
+            },
+            {
+                theme: "Technik",
+                groups: [
+                    { name: "Apple Produkte", color: "yellow", words: ["IPHONE", "IPAD", "MACBOOK", "AIRPODS"] },
+                    { name: "Social Media", color: "green", words: ["INSTAGRAM", "TIKTOK", "FACEBOOK", "SNAPCHAT"] },
+                    { name: "Programmiersprachen", color: "blue", words: ["PYTHON", "JAVA", "JAVASCRIPT", "RUBY"] },
+                    { name: "Computer-Teile", color: "purple", words: ["CPU", "RAM", "FESTPLATTE", "GRAFIKKARTE"] }
+                ]
+            },
+            {
+                theme: "Natur",
+                groups: [
+                    { name: "Baumarten", color: "yellow", words: ["EICHE", "BIRKE", "TANNE", "BUCHE"] },
+                    { name: "Blumen", color: "green", words: ["ROSE", "TULPE", "SONNENBLUME", "NELKE"] },
+                    { name: "Jahreszeiten", color: "blue", words: ["FRUEHLING", "SOMMER", "HERBST", "WINTER"] },
+                    { name: "Wetter", color: "purple", words: ["REGEN", "SCHNEE", "SONNE", "GEWITTER"] }
+                ]
+            },
+            {
+                theme: "Berufe",
+                groups: [
+                    { name: "Im Krankenhaus", color: "yellow", words: ["ARZT", "KRANKENSCHWESTER", "CHIRURG", "PFLEGER"] },
+                    { name: "Handwerker", color: "green", words: ["ELEKTRIKER", "KLEMPNER", "SCHREINER", "MALER"] },
+                    { name: "Kreative Berufe", color: "blue", words: ["DESIGNER", "FOTOGRAF", "MUSIKER", "AUTOR"] },
+                    { name: "Uniformtraeger", color: "purple", words: ["POLIZIST", "PILOT", "SOLDAT", "FEUERWEHR"] }
+                ]
+            },
+            {
+                theme: "Geschichte",
+                groups: [
+                    { name: "Roemische Kaiser", color: "yellow", words: ["CAESAR", "AUGUSTUS", "NERO", "CALIGULA"] },
+                    { name: "Deutsche Erfinder", color: "green", words: ["GUTENBERG", "BENZ", "DIESEL", "ROENTGEN"] },
+                    { name: "Epochen", color: "blue", words: ["STEINZEIT", "MITTELALTER", "ANTIKE", "NEUZEIT"] },
+                    { name: "Historische Ereignisse", color: "purple", words: ["MAUERFALL", "MONDLANDUNG", "TITANIC", "REVOLUTION"] }
+                ]
+            },
+            {
+                theme: "Sprache",
+                groups: [
+                    { name: "Wortarten", color: "yellow", words: ["VERB", "NOMEN", "ADJEKTIV", "ADVERB"] },
+                    { name: "Satzzeichen", color: "green", words: ["PUNKT", "KOMMA", "FRAGEZEICHEN", "AUSRUFEZEICHEN"] },
+                    { name: "Sprachen mit Umlauten", color: "blue", words: ["DEUTSCH", "SCHWEDISCH", "FINNISCH", "TUERKISCH"] },
+                    { name: "Redewendungen", color: "purple", words: ["DAUMEN DRUECKEN", "SCHWEIN HABEN", "PECH HABEN", "GLUECK HABEN"] }
+                ]
+            },
+            {
+                theme: "Spielzeug",
+                groups: [
+                    { name: "Brettspiele", color: "yellow", words: ["MONOPOLY", "RISIKO", "SCRABBLE", "SCHACH"] },
+                    { name: "LEGO Themen", color: "green", words: ["STAR WARS", "CITY", "TECHNIC", "NINJAGO"] },
+                    { name: "Videospiel-Konsolen", color: "blue", words: ["PLAYSTATION", "XBOX", "NINTENDO", "PC"] },
+                    { name: "Klassisches Spielzeug", color: "purple", words: ["PUPPE", "TEDDY", "BAUKLOTZE", "KREISEL"] }
+                ]
+            },
+            {
+                theme: "Koerper",
+                groups: [
+                    { name: "Koerperteile im Kopf", color: "yellow", words: ["AUGE", "NASE", "MUND", "OHR"] },
+                    { name: "Innere Organe", color: "green", words: ["HERZ", "LUNGE", "LEBER", "NIERE"] },
+                    { name: "Knochen", color: "blue", words: ["SCHAEDEL", "RIPPE", "WIRBEL", "BECKEN"] },
+                    { name: "Mit 5 Fingern", color: "purple", words: ["HAND", "FAUST", "GREIFEN", "WINKEN"] }
+                ]
+            },
+            {
+                theme: "Reisen",
+                groups: [
+                    { name: "Transportmittel", color: "yellow", words: ["FLUGZEUG", "ZUG", "SCHIFF", "AUTO"] },
+                    { name: "Im Hotel", color: "green", words: ["REZEPTION", "ZIMMER", "POOL", "BUFFET"] },
+                    { name: "Urlaubslaender", color: "blue", words: ["SPANIEN", "ITALIEN", "GRIECHENLAND", "KROATIEN"] },
+                    { name: "Gepaeck", color: "purple", words: ["KOFFER", "RUCKSACK", "TASCHE", "TROLLEY"] }
+                ]
+            }
+        ];
+
+        // ============================================================
+        // SPIELLOGIK
+        // ============================================================
+
+        let currentGame = null;
+        let remainingWords = [];
+        let selectedWords = [];
+        let solvedGroups = [];
+        let mistakes = 0;
+        const MAX_MISTAKES = 4;
+        let gameOver = false;
+
+        // Stats management
+        function getStats() {
+            const stats = localStorage.getItem('connections-bonus-stats');
+            return stats ? JSON.parse(stats) : { played: 0, won: 0, streak: 0 };
+        }
+
+        function saveStats(stats) {
+            localStorage.setItem('connections-bonus-stats', JSON.stringify(stats));
+        }
+
+        function updateStatsDisplay() {
+            const stats = getStats();
+            document.getElementById('stat-played').textContent = stats.played;
+            document.getElementById('stat-won').textContent = stats.won;
+            document.getElementById('stat-streak').textContent = stats.streak;
+        }
+
+        function recordWin() {
+            const stats = getStats();
+            stats.played++;
+            stats.won++;
+            stats.streak++;
+            saveStats(stats);
+            updateStatsDisplay();
+        }
+
+        function recordLoss() {
+            const stats = getStats();
+            stats.played++;
+            stats.streak = 0;
+            saveStats(stats);
+            updateStatsDisplay();
+        }
+
+        function pickRandomGame() {
+            return GAMES[Math.floor(Math.random() * GAMES.length)];
+        }
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function initGame() {
+            currentGame = pickRandomGame();
+            remainingWords = [];
+            selectedWords = [];
+            solvedGroups = [];
+            mistakes = 0;
+            gameOver = false;
+
+            // Collect all words
+            currentGame.groups.forEach(group => {
+                group.words.forEach(word => {
+                    remainingWords.push({ word, group: group.name, color: group.color });
+                });
+            });
+
+            // Shuffle
+            remainingWords = shuffleArray(remainingWords);
+
+            // Update UI
+            document.getElementById('theme-text').textContent = currentGame.theme;
+            document.getElementById('solved-groups').innerHTML = '';
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+            document.getElementById('play-again-button').classList.remove('visible');
+
+            updateMistakeDots();
+            renderBoard();
+            updateSelectionCount();
+            updateStatsDisplay();
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            remainingWords.forEach((item, index) => {
+                const tile = document.createElement('button');
+                tile.className = 'tile';
+                tile.textContent = item.word;
+                tile.dataset.index = index;
+                tile.addEventListener('click', () => toggleSelection(index));
+                if (selectedWords.includes(index)) {
+                    tile.classList.add('selected');
+                }
+                board.appendChild(tile);
+            });
+
+            document.getElementById('submit-btn').disabled = selectedWords.length !== 4;
+        }
+
+        function toggleSelection(index) {
+            if (gameOver) return;
+
+            const pos = selectedWords.indexOf(index);
+            if (pos !== -1) {
+                selectedWords.splice(pos, 1);
+            } else if (selectedWords.length < 4) {
+                selectedWords.push(index);
+            }
+
+            renderBoard();
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            document.getElementById('selection-count').textContent = `${selectedWords.length} / 4 ausgewahlt`;
+        }
+
+        function deselectAll() {
+            selectedWords = [];
+            renderBoard();
+            updateSelectionCount();
+        }
+
+        function shuffleBoard() {
+            remainingWords = shuffleArray(remainingWords);
+            selectedWords = [];
+            renderBoard();
+            updateSelectionCount();
+        }
+
+        function updateMistakeDots() {
+            const dots = document.querySelectorAll('.mistake-dot');
+            dots.forEach((dot, i) => {
+                if (i < mistakes) {
+                    dot.classList.add('used');
+                } else {
+                    dot.classList.remove('used');
+                }
+            });
+        }
+
+        function submitGuess() {
+            if (selectedWords.length !== 4 || gameOver) return;
+
+            const selectedItems = selectedWords.map(i => remainingWords[i]);
+            const groups = selectedItems.map(item => item.group);
+            const uniqueGroups = [...new Set(groups)];
+
+            if (uniqueGroups.length === 1) {
+                // Correct!
+                const group = currentGame.groups.find(g => g.name === uniqueGroups[0]);
+                solvedGroups.push(group);
+
+                // Remove solved words
+                remainingWords = remainingWords.filter((_, i) => !selectedWords.includes(i));
+                selectedWords = [];
+
+                // Show solved group
+                showSolvedGroup(group);
+
+                if (solvedGroups.length === 4) {
+                    gameWon();
+                } else {
+                    showMessage('Richtig!', 'success');
+                    setTimeout(() => {
+                        document.getElementById('message').textContent = '';
+                        document.getElementById('message').className = 'message';
+                    }, 1500);
+                }
+
+                renderBoard();
+                updateSelectionCount();
+            } else {
+                // Wrong
+                mistakes++;
+                updateMistakeDots();
+
+                // Check for "one away"
+                const groupCounts = {};
+                groups.forEach(g => groupCounts[g] = (groupCounts[g] || 0) + 1);
+                const maxCount = Math.max(...Object.values(groupCounts));
+
+                if (maxCount === 3) {
+                    showMessage('Knapp daneben! Ein Wort ist falsch.', 'error');
+                } else {
+                    showMessage('Leider falsch!', 'error');
+                }
+
+                // Shake tiles
+                const tiles = document.querySelectorAll('.tile.selected');
+                tiles.forEach(tile => {
+                    tile.classList.add('shake');
+                    setTimeout(() => tile.classList.remove('shake'), 500);
+                });
+
+                if (mistakes >= MAX_MISTAKES) {
+                    gameLost();
+                } else {
+                    selectedWords = [];
+                    setTimeout(() => {
+                        renderBoard();
+                        updateSelectionCount();
+                        document.getElementById('message').textContent = '';
+                        document.getElementById('message').className = 'message';
+                    }, 1500);
+                }
+            }
+        }
+
+        function showSolvedGroup(group) {
+            const container = document.getElementById('solved-groups');
+            const div = document.createElement('div');
+            div.className = `solved-group group-${group.color}`;
+            div.innerHTML = `
+                <h4>${group.name}</h4>
+                <p>${group.words.join(', ')}</p>
+            `;
+            container.appendChild(div);
+        }
+
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+        }
+
+        function gameWon() {
+            gameOver = true;
+            showMessage('Gratulation! Alle Gruppen gefunden!', 'success');
+            recordWin();
+            document.getElementById('play-again-button').classList.add('visible');
+        }
+
+        function gameLost() {
+            gameOver = true;
+            showMessage('Leider verloren!', 'error');
+            recordLoss();
+
+            // Show remaining groups
+            currentGame.groups.forEach(group => {
+                if (!solvedGroups.includes(group)) {
+                    showSolvedGroup(group);
+                }
+            });
+
+            remainingWords = [];
+            renderBoard();
+            document.getElementById('play-again-button').classList.add('visible');
+        }
+
+        function startNewGame() {
+            initGame();
+        }
+
+        function createSnowflakes() {
+            const container = document.getElementById('snowflakes');
+            container.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                snowflake.textContent = '\u2744';
+                snowflake.style.left = Math.random() * 100 + '%';
+                snowflake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                snowflake.style.animationDelay = Math.random() * 5 + 's';
+                snowflake.style.fontSize = (Math.random() * 1 + 0.5) + 'em';
+                container.appendChild(snowflake);
+            }
+        }
+
+        // Initialize
+        createSnowflakes();
+        initGame();
+    </script>
+</body>
+</html>

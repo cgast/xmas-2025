@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weihnachts-Wordle - Bonus Spiel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+        .snowflakes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 0; }
+        .snowflake { position: absolute; top: -10px; color: white; font-size: 1.5em; opacity: 0.8; animation: fall linear infinite; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+        .container { position: relative; z-index: 1; max-width: 500px; width: 100%; }
+        h1 { text-align: center; margin-bottom: 10px; font-size: 2em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .subtitle { text-align: center; margin-bottom: 20px; font-size: 1.1em; opacity: 0.9; }
+        .instructions { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-bottom: 20px; font-size: 0.9em; }
+        .instructions h4 { margin-bottom: 10px; color: #ffd700; }
+        .instructions ul { margin-left: 20px; }
+        .instructions li { margin-bottom: 5px; }
+        .color-legend { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.85em; }
+        .legend-box { width: 25px; height: 25px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }
+        .legend-box.correct { background: #538d4e; }
+        .legend-box.present { background: #b59f3b; }
+        .legend-box.absent { background: #3a3a3c; }
+        .board { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 25px; }
+        .row { display: flex; gap: 8px; }
+        .tile { width: 58px; height: 58px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2em; font-weight: bold; text-transform: uppercase; background: rgba(255,255,255,0.1); transition: all 0.3s; }
+        .tile.filled { border-color: rgba(255,255,255,0.6); animation: pop 0.1s; }
+        .tile.correct { background: #538d4e; border-color: #538d4e; }
+        .tile.present { background: #b59f3b; border-color: #b59f3b; }
+        .tile.absent { background: #3a3a3c; border-color: #3a3a3c; }
+        @keyframes pop { 50% { transform: scale(1.1); } }
+        @keyframes flip { 0% { transform: rotateX(0); } 50% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+        .tile.flip { animation: flip 0.5s; }
+        .keyboard { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .keyboard-row { display: flex; gap: 6px; }
+        .key { min-width: 35px; height: 50px; background: rgba(255,255,255,0.8); border: none; border-radius: 6px; font-size: 1em; font-weight: bold; cursor: pointer; transition: all 0.2s; color: #333; text-transform: uppercase; }
+        .key:hover { background: white; transform: scale(1.05); }
+        .key.wide { min-width: 60px; font-size: 0.8em; }
+        .key.correct { background: #538d4e; color: white; }
+        .key.present { background: #b59f3b; color: white; }
+        .key.absent { background: #3a3a3c; color: white; }
+        .message { text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: bold; min-height: 50px; }
+        .message.success { background: #4CAF50; }
+        .message.error { background: #f44336; animation: shake 0.5s; }
+        .message.info { background: rgba(255,255,255,0.2); }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        .play-again-button { display: none; margin: 20px auto; padding: 15px 40px; font-size: 1.3em; background: linear-gradient(135deg, #ffd700, #ffaa00); color: #333; border: none; border-radius: 30px; cursor: pointer; animation: pulse 2s infinite; }
+        .play-again-button.visible { display: block; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,215,0,0.7); } 50% { transform: scale(1.05); box-shadow: 0 0 20px 10px rgba(255,215,0,0); } }
+        .attempts { text-align: center; margin-bottom: 15px; font-size: 1.1em; }
+        .stats { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; }
+        .stats h4 { color: #ffd700; margin-bottom: 10px; }
+        .stats-grid { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.8em; font-weight: bold; }
+        .stat-label { font-size: 0.8em; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="snowflakes" id="snowflakes"></div>
+    <div class="container">
+        <h1>Weihnachts-Wordle</h1>
+        <p class="subtitle">Bonus Spiel - Spiele so oft du willst!</p>
+
+        <div class="stats" id="stats">
+            <h4>Deine Statistik</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-played">0</div>
+                    <div class="stat-label">Gespielt</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-won">0</div>
+                    <div class="stat-label">Gewonnen</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-streak">0</div>
+                    <div class="stat-label">Serie</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h4>Anleitung</h4>
+            <ul>
+                <li>Errate das geheime 5-Buchstaben-Wort in 6 Versuchen</li>
+                <li>Nach jedem Versuch zeigen die Farben, wie nah du dran bist</li>
+                <li>Du kannst nur echte deutsche Worter eingeben!</li>
+            </ul>
+            <div class="color-legend">
+                <div class="legend-item"><div class="legend-box correct">A</div><span>Richtig & richtige Stelle</span></div>
+                <div class="legend-item"><div class="legend-box present">B</div><span>Im Wort, falsche Stelle</span></div>
+                <div class="legend-item"><div class="legend-box absent">C</div><span>Nicht im Wort</span></div>
+            </div>
+        </div>
+
+        <div class="attempts">Versuch: <span id="current-attempt">1</span> / 6</div>
+        <div class="board" id="board"></div>
+        <div class="message" id="message"></div>
+        <div class="keyboard" id="keyboard"></div>
+        <button class="play-again-button" id="play-again-button" onclick="startNewGame()">Nochmal spielen!</button>
+    </div>
+
+    <script>
+        // German 5-letter word list
+        const WORD_LIST = `
+        ABEND AFFEN AKTIE ALTER AMPEL ANGEL ANGST APFEL AROMA ASCHE
+        BAUER BAUCH BAUEN BEERE BERGE BESTE BIENE BITTE BLATT BLECH
+        BLICK BLIND BLITZ BLOCK BLUME BLUSE BODEN BOGEN BOHNE BOMBE
+        BOOTE BRAND BRAUN BRAUT BREIT BRETT BRIEF BRISE BROTE BRUCH
+        BRUST BUCHT BUSCH CHAOS CLOWN COUCH CREME DAMEN DAMPF DANKE
+        DATUM DAUER DECKE DICHT DICKE DIESE DRAHT DRAMA DRECK DRIFT
+        DRINK DRITT DRUCK DUELL DUNST DURCH DURST EBENE ECHTE ECKEN
+        EICHE EIFER EIGEN EIMER EINER EISEN ELEND ENGEL ENKEL ERBEN
+        ERNTE ERSTE ESSEN ETAGE ETWAS EULEN EXTRA FABEL FADEN FAHNE
+        FAHRT FALKE FALLE FARBE FASER FAUNA FAUST FEDER FEHLT FEIER
+        FEIGE FEINE FEIND FELDE FERNE FESTE FETTE FIGUR FILME FISCH
+        FLACH FLECK FLORA FLUCH FLUGE FLUSS FOKUS FOLGE FOTOS
+        FRAGE FREMD FRIST FRONT FROST FUCHS FUNKT GABEL GANZE GASSE
+        GEIER GEIST GENIE GERNE GIFTE GLANZ GLATT GLAUB GLEIS GLIED
+        GNADE GRABE GRASE GREIF GRIFF GRILL GRIPS GROBE GRUBE GRUFT
+        GRUND GRUSS GUNST GURKE GUTEN HABEN HACKE HAFEN HAGEL HAKEN
+        HALBE HALLE HALTE HANDY HARFE HARTE HASEN HAUBE HAUPT HAUSE
+        HEBEL HECHT HECKE HEFTE HEIDE HEILE HEISS HELLE HEMDE HENNE
+        HERDE HERRN HERZE HEUTE HEXEN HILFE HITZE HOBBY HOFFE HOHLE
+        HOLEN HONIG HORDE HOTEL HUNDE HUTTE IDEEN IGELN IMAGE IMMER
+        INNEN INSEL IRREN JACKE JAHRE JEANS JEDER JOKER JUBEL JUNGE
+        KABEL KAKAO KALTE KAMEL KAMPF KANAL KANNE KANTE KARTE KASSE
+        KATZE KAUFE KEHLE KEHRE KEINE KELCH KELLE KERLE KERNE KERZE
+        KETTE KIEME KILOS KINDE KINOS KISTE KLAGE KLANG KLARE
+        KLAUE KLEBE KLEID KLEIN KLICK KLIMA KLOTZ KLUGE KNABE KNALL
+        KNAPP KNAST KNETE KNICK KNIFF KNOPF KOBRA KOCHT KOHLE KOMBI
+        KOMIK KOMMA KOPFE KORBE KRAFT KRAKE KRANK KRANZ KRAUT KREBS
+        KREIS KREUZ KRIEG KRISE KRONE KROTE KUNST KURSE KURVE KUSSE
+        LACHE LACHS LADEN LAGER LAMPE LANDE LANGE LANZE LARVE LASER
+        LASSE LAUBE LAUCH LAUER LAUFE LAUGE LAUNE LEBER LEDER LEERE
+        LEGEN LEHNE LEHRE LEIDE LEINE LEISE LEITE LERNE LESEN LESER
+        LETZE LEUTE LIANE LICHT LIEBE LIEDE LIEGE LIEST LILIE LINDE
+        LINIE LINKE LINSE LIPPE LISTE LITER LOGEN LOGIK LOHNE LOKAL
+        LOSEN LOSER LOTTO LOTSE LUCHS LUDER LUNGE LUNTE LURCH LUXUS
+        MACHE MACHT MAGEN MALEN MALER MANGE MAPPE MARKE MARKT MASKE
+        MASSE MATTE MAUER MEERE MEILE MEINE MEISE MEIST MELDE MENGE
+        MERKE MESSE METER METRO MIETE MILBE MILCH MILDE MINEN MINZE
+        MITTE MODEL MODEM MOLCH MONAT MONDE MOPED MORAL MOTOR MOTTE
+        MUCKE MUDEN MUHLE MULLS MUMIE MUNZE MUSIK MUTEN MUTIG NABEL
+        NACHT NADEL NAGEL NAHEN NAHME NAIVE NAMEN NARBE NARRE NASSE
+        NATUR NEBEL NEBEN NECKE NEFFE NEHME NEIDE NEIGE NENNE NERVE
+        NESTE NETTO NETZE NEUEN NEUER NEUNE NICHT NICKE NIETE NINJA
+        NONNE NORME NOTIZ NUDEL NULLE NUTZE OASEN OCHSE OFFEN OHREN
+        OLIVE ONKEL OPFER ORDEN ORGAN ORGIE ORKAN ORTEN OSTEN OTTER
+        PAARE PACHT PACKE PAKET PALME PANDA PANIK PANNE PAPST PARTY
+        PASTA PASTE PATEN PAUSE PEDAL PEGEL PENNE PERLE PESTO PETER
+        PFADE PFAND PFEIL PFERD PFIFF PFOTE PFUND PHASE PIANO PICKE
+        PILOT PINKE PISTE PIXEL PIZZA PLAGE PLANE PLATT PLATZ POCKE
+        POKAL POKER POLAR POLLE POOLS POREN PORTO POSTE PRALL PREIS
+        PRIMA PRINZ PRISE PROBE PROFI PROMI PRUNK PUDER PULSE PUMPE
+        PUNKT PUPPE PUSTE PUTZE QUAKE QUALM QUARK QUELL QUOTE RABEN
+        RACHE RADAR RAGEN RAHME RAMPE RANCH RANDE RANKE RASEN RASSE
+        RASTE RATEN RAUCH RAUFE RAUME RAUPE REALE REBEN RECHT REDEN
+        REGAL REGEN REGIE REICH REIHE REIME REINE REISE REITE REIZE
+        REMIX RENNE RENTE RESTE RHEIN RIEBE RIEFE RIEGE RIESE RIFFE
+        RILLE RINDE RINGE RINNE RIPPE RISSE RITTE RITZE ROBBE ROBEN
+        ROHER ROHRE ROLLE ROMAN ROSTE ROTEN ROTOR ROTTE ROUTE RUBIN
+        RUCKE RUDER RUFEN RUHME RUHTE RUINE RUMPF RUNDE RUPFE RUSTE
+        RUTEN SACHE SACKE SAFTE SAGEN SAHNE SAITE SALAT SALBE SALON
+        SALTO SALUT SALZE SAMEN SANDE SANFT SANGE SARGE SATAN SATTE
+        SAUCE SAUER SAUGE SAULE SAUNA SAURE SCHAF SCHAL SCHAM SCHAR
+        SCHAU SEELE SEGEL SEGEN SEHEN SEHNE SEIDE SEIFE SEILE SEINE
+        SEITE SEKTE SELBE SENDE SENFE SENKE SENSE SERIE SERUM SETZE
+        SICHT SIEBE SIEGE SIEHE SILBE SINGE SINKE SINNE SIPPE SITTE
+        SITZE SKALA SOCKE SOHLE SOHNE SOLAR SOLLE SONDE SONNE SORGE
+        SORTE SOSSE SPALT SPANN SPARE SPASS SPATE SPECK SPIEL SPION
+        SPITZ SPORT SPOTT SPRAY SPRIT SPUCK SPUKE SPULE
+        STACK STADT STAHL STALL STAMM STAND STANK STARK STARR
+        START STATT STAUB STAUE STECK STEGE STEHE STEIF STEIG STEIN
+        STELL STERN STETS STICH STICK STIEG STIEL STIER STIFT STILL
+        STIMM STINK STIRN STOCK STOFF STOLZ STOPF STOPP STOSS
+        STROM STUCK STUFE STUHL STUMM STUNK STURM STURZ
+        STUTE SUCHE SUCHT SUDEN SUHNE SUITE SUMME SUMPF SUNDE SUPER
+        SUPPE SURFE SUSSE SZENE TABAK TABUS TAFEL TAGEN TALER TANNE
+        TANTE TANZE TARIF TARNE TAROT TASSE TASTE TATEN TATZE
+        TAUBE TAUCH TAUFE TAUGE TAXEN TEAMS TEICH TEIGE TEILE
+        TEMPO TENNE TENOR TEXTE THESE THRON TIERE TIGER TINTE TISCH
+        TITEL TOAST TONNE TOPFE TORTE TOTAL TOTEM TOTEN TOTER
+        TRAFO TRAGE TRANK TRAUM TRAUN TREFF TREIB TREND TRETE
+        TREUE TRICK TRIEB TRIFT TRIKE TRITT TROCK TROPF TROTZ TRUBE
+        TRUCK TRUDE TRUHE TRUNK TRUPP TUBEN TUCHE TUCKE TUMOR
+        TUNTE TURME TUSCH TUTOR TWIST TYPEN UBELS UHREN ULTRA UMHER
+        UMWEG UNION UNRAT UNRUH UNTEN UNTER URBAN VATER VEGAN
+        VERSE VIDEO VIELE VILLA VIRUS VISUM VOGEL VOLKE VOLLE VORAN
+        VORNE WACHS WACHT WADEN WAFFE WAGEN WAHLE WAHNE WAHRE WAISE
+        WALZE WAMPE WANGE WANNE WANZE WAREN WARME WARNE WARTE
+        WARUM WASCH WATTE WEBEN WEBER WECKE WEDEL WEGEN WEHEN WEHRE
+        WEIBE WEICH WEIDE WEINE WEISE WEISS WEITE WELLE WELPE WENDE
+        WENIG WERDE WERFE WERKE WERTE WESEN WESTE WETTE WICKE WIDER
+        WIEGE WIESE WILDE WILLE WINDE WINKE WIPPE WIRKE WIRRE WISCH
+        WITWE WITZE WOCHE WOGEN WOHLE WOHNE WOLBE WOLFE WOLKE WOLLE
+        WONNE WORTE WRACK WUCHT WUHLE WUNDE WURFE WURME WURST WURZE
+        WUSTE YACHT ZACKE ZAHLE ZAHNE ZANGE ZANKE ZAPFE ZARGE ZARTE
+        ZAUBE ZAUNE ZEBRA ZECHE ZECKE ZEHEN ZEIGE ZEILE ZELLE ZELTE
+        ZIEGE ZIELE ZIEMT ZIERE ZIGAR ZIMTE ZINKE ZINNE ZINSE ZITAT
+        ZOPFE ZORNE ZUCHT ZUCKE ZUGEN ZUNFT ZUNGE ZWANG
+        ZWECK ZWEIG ZWICK ZWING ZYSTE
+        `.trim().split(/\s+/).map(w => w.toUpperCase()).filter(w => w.length === 5);
+
+        const VALID_WORDS = new Set(WORD_LIST);
+
+        const WORD_LENGTH = 5;
+        const MAX_ATTEMPTS = 6;
+
+        let secretWord = '';
+        let currentAttempt = 0;
+        let currentGuess = '';
+        let gameOver = false;
+        let keyStatus = {};
+
+        const keyboardLayout = [
+            ['Q', 'W', 'E', 'R', 'T', 'Z', 'U', 'I', 'O', 'P'],
+            ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+            ['ENTER', 'Y', 'X', 'C', 'V', 'B', 'N', 'M', '\u232B']
+        ];
+
+        // Stats management
+        function getStats() {
+            const stats = localStorage.getItem('wordle-bonus-stats');
+            return stats ? JSON.parse(stats) : { played: 0, won: 0, streak: 0 };
+        }
+
+        function saveStats(stats) {
+            localStorage.setItem('wordle-bonus-stats', JSON.stringify(stats));
+        }
+
+        function updateStatsDisplay() {
+            const stats = getStats();
+            document.getElementById('stat-played').textContent = stats.played;
+            document.getElementById('stat-won').textContent = stats.won;
+            document.getElementById('stat-streak').textContent = stats.streak;
+        }
+
+        function recordWin() {
+            const stats = getStats();
+            stats.played++;
+            stats.won++;
+            stats.streak++;
+            saveStats(stats);
+            updateStatsDisplay();
+        }
+
+        function recordLoss() {
+            const stats = getStats();
+            stats.played++;
+            stats.streak = 0;
+            saveStats(stats);
+            updateStatsDisplay();
+        }
+
+        function pickRandomWord() {
+            return WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
+        }
+
+        function initGame() {
+            secretWord = pickRandomWord();
+            currentAttempt = 0;
+            currentGuess = '';
+            gameOver = false;
+            keyStatus = {};
+
+            // Clear board
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            for (let i = 0; i < MAX_ATTEMPTS; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.id = `row-${i}`;
+                for (let j = 0; j < WORD_LENGTH; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.id = `tile-${i}-${j}`;
+                    row.appendChild(tile);
+                }
+                board.appendChild(row);
+            }
+
+            // Clear keyboard
+            const keyboard = document.getElementById('keyboard');
+            keyboard.innerHTML = '';
+
+            keyboardLayout.forEach(row => {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'keyboard-row';
+                row.forEach(key => {
+                    const keyEl = document.createElement('button');
+                    keyEl.className = 'key';
+                    keyEl.textContent = key;
+                    keyEl.id = `key-${key}`;
+                    if (key === 'ENTER' || key === '\u232B') keyEl.classList.add('wide');
+                    keyEl.addEventListener('click', () => handleKeyPress(key));
+                    rowEl.appendChild(keyEl);
+                });
+                keyboard.appendChild(rowEl);
+            });
+
+            // Reset UI
+            document.getElementById('current-attempt').textContent = '1';
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+            document.getElementById('play-again-button').classList.remove('visible');
+
+            updateStatsDisplay();
+        }
+
+        function handleKeyPress(key) {
+            if (gameOver) return;
+            if (key === '\u232B') deleteLetter();
+            else if (key === 'ENTER') submitGuess();
+            else if (currentGuess.length < WORD_LENGTH) addLetter(key);
+        }
+
+        function addLetter(letter) {
+            if (currentGuess.length >= WORD_LENGTH) return;
+            const tile = document.getElementById(`tile-${currentAttempt}-${currentGuess.length}`);
+            tile.textContent = letter;
+            tile.classList.add('filled');
+            currentGuess += letter;
+        }
+
+        function deleteLetter() {
+            if (currentGuess.length === 0) return;
+            currentGuess = currentGuess.slice(0, -1);
+            const tile = document.getElementById(`tile-${currentAttempt}-${currentGuess.length}`);
+            tile.textContent = '';
+            tile.classList.remove('filled');
+        }
+
+        function submitGuess() {
+            if (currentGuess.length !== WORD_LENGTH) {
+                showMessage('Bitte gib 5 Buchstaben ein!', 'error');
+                shakeRow();
+                return;
+            }
+
+            if (!VALID_WORDS.has(currentGuess.toUpperCase())) {
+                showMessage('Das ist kein gultiges Wort!', 'error');
+                shakeRow();
+                return;
+            }
+
+            const result = checkGuess(currentGuess);
+            revealTiles(result);
+        }
+
+        function checkGuess(guess) {
+            const result = [];
+            const secretArray = secretWord.toUpperCase().split('');
+            const guessArray = guess.toUpperCase().split('');
+            const secretCount = {};
+
+            secretArray.forEach(letter => {
+                secretCount[letter] = (secretCount[letter] || 0) + 1;
+            });
+
+            guessArray.forEach((letter, i) => {
+                if (letter === secretArray[i]) {
+                    result[i] = 'correct';
+                    secretCount[letter]--;
+                }
+            });
+
+            guessArray.forEach((letter, i) => {
+                if (result[i]) return;
+                if (secretCount[letter] && secretCount[letter] > 0) {
+                    result[i] = 'present';
+                    secretCount[letter]--;
+                } else {
+                    result[i] = 'absent';
+                }
+            });
+
+            return result;
+        }
+
+        function revealTiles(result) {
+            const row = document.getElementById(`row-${currentAttempt}`);
+            const tiles = row.querySelectorAll('.tile');
+
+            tiles.forEach((tile, i) => {
+                setTimeout(() => {
+                    tile.classList.add('flip');
+                    setTimeout(() => {
+                        tile.classList.add(result[i]);
+                        updateKeyboard(currentGuess[i], result[i]);
+                    }, 250);
+                }, i * 300);
+            });
+
+            setTimeout(() => {
+                if (currentGuess.toUpperCase() === secretWord.toUpperCase()) {
+                    gameWon();
+                } else if (currentAttempt >= MAX_ATTEMPTS - 1) {
+                    gameLost();
+                } else {
+                    currentAttempt++;
+                    currentGuess = '';
+                    document.getElementById('current-attempt').textContent = currentAttempt + 1;
+                }
+            }, WORD_LENGTH * 300 + 500);
+        }
+
+        function updateKeyboard(letter, status) {
+            const key = document.getElementById(`key-${letter}`);
+            if (!key) return;
+            if (keyStatus[letter] === 'correct') return;
+            if (keyStatus[letter] === 'present' && status === 'absent') return;
+            keyStatus[letter] = status;
+            key.classList.remove('correct', 'present', 'absent');
+            key.classList.add(status);
+        }
+
+        function shakeRow() {
+            const row = document.getElementById(`row-${currentAttempt}`);
+            row.style.animation = 'shake 0.5s';
+            setTimeout(() => row.style.animation = '', 500);
+        }
+
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+        }
+
+        function gameWon() {
+            gameOver = true;
+            const messages = ['Genial!', 'Fantastisch!', 'Grossartig!', 'Sehr gut!', 'Gut gemacht!', 'Knapp!'];
+            showMessage(messages[currentAttempt], 'success');
+            recordWin();
+            document.getElementById('play-again-button').classList.add('visible');
+        }
+
+        function gameLost() {
+            gameOver = true;
+            showMessage(`Das Wort war: ${secretWord}`, 'error');
+            recordLoss();
+            document.getElementById('play-again-button').classList.add('visible');
+        }
+
+        function startNewGame() {
+            initGame();
+        }
+
+        function createSnowflakes() {
+            const container = document.getElementById('snowflakes');
+            container.innerHTML = '';
+            for (let i = 0; i < 50; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                snowflake.textContent = '\u2744';
+                snowflake.style.left = Math.random() * 100 + '%';
+                snowflake.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                snowflake.style.animationDelay = Math.random() * 5 + 's';
+                snowflake.style.fontSize = (Math.random() * 1 + 0.5) + 'em';
+                container.appendChild(snowflake);
+            }
+        }
+
+        // Keyboard event listener
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (e.key === 'Enter') handleKeyPress('ENTER');
+            else if (e.key === 'Backspace') handleKeyPress('\u232B');
+            else if (/^[a-zA-Z]$/.test(e.key)) handleKeyPress(e.key.toUpperCase());
+        });
+
+        // Initialize
+        createSnowflakes();
+        initGame();
+    </script>
+</body>
+</html>
