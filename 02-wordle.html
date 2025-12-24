@@ -81,7 +81,7 @@
                 <div class="legend-item"><div class="legend-box absent">C</div><span>Nicht im Wort</span></div>
             </div>
         </div>
-        <div class="theme-hint">
+        <div class="theme-hint" id="theme-hint" style="display: none;">
             <h3>🎯 Hinweis</h3>
             <p id="hint-text">Wird geladen...</p>
         </div>
@@ -99,10 +99,10 @@
 
         const CONFIG = {
             // Das zu erratende Wort (muss 5 Buchstaben haben!)
-            secretWord: "MARIO",
+            secretWord: "BONUS",
 
             // Hinweis der angezeigt wird
-            hint: "Der berühmteste Klempner der Welt 🍄",
+            hint: "",
 
             // Wortvalidierung aktivieren? 
             // true = nur echte Wörter aus der Liste erlaubt
@@ -243,7 +243,10 @@
         const keyStatus = {};
 
         function initGame() {
-            document.getElementById('hint-text').textContent = CONFIG.hint;
+            if (CONFIG.hint) {
+                document.getElementById('hint-text').textContent = CONFIG.hint;
+                document.getElementById('theme-hint').style.display = 'block';
+            }
 
             const board = document.getElementById('board');
             for (let i = 0; i < MAX_ATTEMPTS; i++) {
